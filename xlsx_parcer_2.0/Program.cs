@@ -27,6 +27,7 @@ namespace xlsx_parcer_2._0
         static void Main(string[] args)
         {
 
+
             List<field> fields = new List<field>();
 
 
@@ -34,12 +35,16 @@ namespace xlsx_parcer_2._0
             string[] files = Directory.GetFiles(paths);
 
                Exel_field[] exel_fields = ReadExel("Export1.xlsx");
-         
-                Workbook wb = new Workbook();
 
-                Worksheet sheet = wb.Worksheets[0];
-                
-                int count_cells = 0;
+            Workbook wb = new Workbook("Export1.xlsx");
+
+            // Получить все рабочие листы
+            WorksheetCollection collection = wb.Worksheets;
+
+            // Перебрать все рабочие листы
+            Style style = new Style();
+
+            int count_cells = 0;
                 foreach (string file in files)
                 {
                     string path = file;
@@ -65,12 +70,15 @@ namespace xlsx_parcer_2._0
                            
                            // Console.WriteLine(fields.ToArray()[i].name + " " + fields.ToArray()[i].INN );
 
-                            Find_and_check_Exel("Export1.xlsx", fields.ToArray()[i].INN, 0);
+                            Find_and_check_Exel(wb,collection,style, fields.ToArray()[i].INN, 0);
+
+
                         }
                     }
                       }
             }
-              
+            wb.Save("Export11.xlsx");
+
         }
 
         public static int Count_substr(String str, String substr)
@@ -273,16 +281,9 @@ namespace xlsx_parcer_2._0
             return exel_field.ToArray();
         }
 
-        public static void Find_and_check_Exel(string path, string name, int col)
+        public static void Find_and_check_Exel(Workbook wb, WorksheetCollection collection, Style style, string name, int col)
         {
-            Workbook wb = new Workbook(path);
-
-            // Получить все рабочие листы
-            WorksheetCollection collection = wb.Worksheets;
-
-            // Перебрать все рабочие листы
-            Style style = new Style();
-          
+           
 
             for (int worksheetIndex = 0; worksheetIndex < collection.Count; worksheetIndex++)
             {
@@ -291,29 +292,32 @@ namespace xlsx_parcer_2._0
                 Worksheet worksheet = collection[worksheetIndex];
 
                 // Печать имени рабочего листа
-                Console.WriteLine("Совпадение...");
-
+                Console.WriteLine("Совпадение... " + name);
+               
                 // Получить количество строк и столбцов
                 int rows = worksheet.Cells.MaxDataRow;
                 for (int i = 0; i < rows; i++)
                 {
-                    //Console.WriteLine(worksheet.Cells[i, col].Value.ToString());
-                    if (name == worksheet.Cells[i, col].Value.ToString())
-                    {
-                        Cell cell = wb.Worksheets[worksheetIndex].Cells[i, col];
-                      
-                        style = cell.GetStyle();
-                        style.Font.Color = Color.Blue; 
-                        cell.SetStyle(style);
-                        break;
-                        
-                    }
+                    // Console.WriteLine(worksheet.Cells[i, col].Value.ToString());
+                        //Console.WriteLine(worksheet.Cells[i, col].Value.ToString());
+                        if (name == worksheet.Cells[i, col].Value.ToString())
+                        {
+                            Cell cell = wb.Worksheets[worksheetIndex].Cells[i, col];
+
+                            style = cell.GetStyle();
+                            style.Font.Color = Color.Blue;
+                            cell.SetStyle(style);
+                            //Console.WriteLine("синий");
+                            break;
+
+                        }
+                 
                    
                 }
 
             }
 
-            wb.Save(path);
+      
         }
     }
 
