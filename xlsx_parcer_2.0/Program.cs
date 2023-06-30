@@ -1,9 +1,6 @@
-﻿using Aspose.Cells;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
-using System.Threading;
 
 namespace xlsx_parcer_2._0
 {
