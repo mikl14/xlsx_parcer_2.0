@@ -3,82 +3,71 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 
 namespace xlsx_parcer_2._0
 {
     class Program
     {
-        struct field
+        public struct Field // структура записи (имя, ИНН, массив всех типов налогов, суммы каждого налога)
         {
             public string name;
             public string INN;
             public string[] type_nalog;
             public string[] nalog;
 
-            public field(string Name, string inn, string[] Type_nalog, string[] Nalog)
-            {
-                name = Name;
-                INN = inn;
-                type_nalog = Type_nalog;
-                nalog = Nalog;
-            }
+               public Field(string Name, string inn, string[] Type_nalog, string[] Nalog)   
+               {
+                   name = Name;
+                   INN = inn;
+                   type_nalog = Type_nalog;
+                   nalog = Nalog;
+               }
+
         }
+
+
+        public static StreamWriter sw = new StreamWriter("Test.txt"); // стрим райтер закрывать только когда он заполнен всем нужным
 
         static void Main(string[] args)
         {
 
 
-            List<field> fields = new List<field>();
+            List<Field> fields = new List<Field>();  //список всех записей
 
 
-            string paths = @".\files";
+            string paths = @".\files"; //путь к xml
             string[] files = Directory.GetFiles(paths);
 
-               Exel_field[] exel_fields = ReadExel("Export1.xlsx");
-
-            Workbook wb = new Workbook("Export1.xlsx");
-
-            // Получить все рабочие листы
-            WorksheetCollection collection = wb.Worksheets;
-
-            // Перебрать все рабочие листы
-            Style style = new Style();
-
-            int count_cells = 0;
-                foreach (string file in files)
+        
+           
+                foreach (string file in files) //перебераем все файлы
                 {
-                    string path = file;
 
-                    for (int j = 0; j < Find_docs(path).Length; j++)
+               
+                    string path = file;
+                    fields.Clear();
+                    String[] Find_doc = Find_docs(path); //парсим все отдельные записи (массив сырых записей)
+
+                    for (int j = 0; j < Find_doc.Length; j++)
                     {
                       
-                        for (int i = 1; i < Count_substr(Find_docs(path)[j], "НаимОрг") + 1; i++)
+                        for (int i = 1; i < Count_substr(Find_doc[j], "НаимОрг") + 1; i++) // бля я слишком ватный не могу вспомнить почему такая проверка но она важная епт
                         {
-                            fields.Add(new field(Find_name(Find_docs(path)[j]),Find_INN(Find_docs(path)[j]), Find_type_nalog(Find_docs(path)[j]),Find_nalog(Find_docs(path)[j])));
-
+                           fields.Add(new Field(Find_name(Find_doc[j]),Find_INN(Find_doc[j]),Find_type_nalog(Find_doc[j]),Find_nalog(Find_doc[j]))); // заполняем список
+                        
                         }
 
                     }
-               
-                for(int i = 0; i < fields.ToArray().Length;i++)
-                {
-                    for (int j = 0; j < exel_fields.Length; j++)
+
+                    foreach (Field pole in fields) // перебор списка
                     {
-
-                        if (fields.ToArray()[i].INN == exel_fields[j].INN)
-                        {
-                           
-                           // Console.WriteLine(fields.ToArray()[i].name + " " + fields.ToArray()[i].INN );
-
-                            Find_and_check_Exel(wb,collection,style, fields.ToArray()[i].INN, 0);
-
-
-                        }
+                        show_stats(pole); // вывод в консоль всей записи списка
+                        add_to_text(pole); // вывод в текстовик всей записи списка
                     }
-                      }
-            }
-            wb.Save("Export11.xlsx");
 
+                }
+            sw.Close(); // закрыть врайтер файлика
         }
 
         public static int Count_substr(String str, String substr)
@@ -91,7 +80,7 @@ namespace xlsx_parcer_2._0
                 index = str.IndexOf(substr, index + 1);
             }
             return count;
-        }
+        } // считает число подстрок в строке
         public static int Count_Str(string str, char ch)
         {
             int count = 0;
@@ -105,7 +94,7 @@ namespace xlsx_parcer_2._0
             }
 
             return count;
-        }
+        } // считает число чаров в строке
 
         public static string Find_name(string str)
         {
@@ -120,14 +109,12 @@ namespace xlsx_parcer_2._0
             }
             return str;
 
-        }
+        } // ищет имя в сырой записи
 
         public static string Find_INN(string str)
         {
-
             try
             {
-
                 str = str.Substring(str.IndexOf("ИННЮЛ=") + 7);
                 str = str.Substring(0, str.IndexOf("\"/>"));
                 str = str.Replace("&quot;", "\"");
@@ -137,7 +124,7 @@ namespace xlsx_parcer_2._0
 
             }
             return str;
-        }
+        } // ищет инн в сырой записи
 
         public static string[] Find_nalog(string str)
         {
@@ -157,7 +144,7 @@ namespace xlsx_parcer_2._0
 
             }
             return words;
-        }
+        } // ищет суммы в сырой записи
 
         public static string[] Find_type_nalog(string str)
         {
@@ -168,18 +155,8 @@ namespace xlsx_parcer_2._0
             {
                 try
                 {
-
                     words[i] = words[i].Substring(0, words[i].IndexOf("\""));
-
-                    if (words[i] == "Налог, взимаемый в связи с  применением упрощенной  системы налогообложения")
-                    {
-                        words[i] = "УСНО";
-                    }
-                    else
-                    {
-                        words[i] = "";
-                    }
-
+            
                 }
                 catch
                 {
@@ -187,9 +164,9 @@ namespace xlsx_parcer_2._0
                 }
             }
             return words;
-        }
+        } // ищет типы налогов в сырой записи
 
-        public static string[] Find_docs(string path)
+        public static string[] Find_docs(string path) // ищет делает массив сырых записей
         {
 
             using (StreamReader sr = new StreamReader(path))
@@ -206,14 +183,11 @@ namespace xlsx_parcer_2._0
                         try
                         {
 
-                            words[i] = words[i].Substring(0, words[i].IndexOf("ДатаСост="));
+                            words[i] = words[i].Substring(0, words[i].IndexOf("ДатаСост=")); //нет он не пропускает последнюю запись, хотя козалось бы... ну или я стал очень глупый чтобы понять всю соль 
 
-
-                            // Console.WriteLine(words[i]);
                         }
                         catch
                         {
-                            // Console.WriteLine("каво");
                         }
 
                     }
@@ -228,96 +202,37 @@ namespace xlsx_parcer_2._0
             // Console.WriteLine("Hello World!");
         }
 
-        public struct Exel_field
-        {
-            public string name;
-            public string INN;
-           
+        
 
-            public Exel_field(string Name, string inn)
+
+        public static void show_stats(Field field) // вывод в консоль всей записи списка
+        {
+            for(int i = 1; i < field.type_nalog.Length;i++)
             {
-                name = Name;
-                INN = inn;
+                Console.WriteLine(field.INN + " " + field.name +" " + field.nalog[i] + " " + field.type_nalog[i]);
+
             }
-        }
-         public static Exel_field[] ReadExel(string path)
+        } 
+
+       
+        public static void add_to_text(Field field) // вывод в текстовик всей записи списка
         {
-            List<Exel_field> exel_field = new List<Exel_field>();
-
-            Workbook wb = new Workbook(path);
-
-            // Получить все рабочие листы
-            WorksheetCollection collection = wb.Worksheets;
-
-            // Перебрать все рабочие листы
-            for (int worksheetIndex = 0; worksheetIndex < collection.Count; worksheetIndex++)
+            try
             {
 
-                // Получить рабочий лист, используя его индекс
-                Worksheet worksheet = collection[worksheetIndex];
-
-                // Печать имени рабочего листа
-                Console.WriteLine("Worksheet: " + worksheet.Name);
-
-                int rows = worksheet.Cells.MaxDataRow;
-                int cols = worksheet.Cells.MaxDataColumn;
-                try
+               
+                for (int i = 1; i < field.type_nalog.Length; i++)
                 {
-                    for (int i = 0; i < rows; i++)
-                    {
-
-                        exel_field.Add(new Exel_field(worksheet.Cells[i, 2].Value.ToString(), worksheet.Cells[i, 0].Value.ToString()));
-
-                    }
-                    Console.WriteLine("Exel Ok");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Ошибка чтения exel проверьте файл на наличие листов с странным форматированием");
+                    sw.WriteLine(field.INN + " " + field.name + " " + field.nalog[i] + " " + field.type_nalog[i]);
                 }
                 
-
             }
-            return exel_field.ToArray();
-        }
-
-        public static void Find_and_check_Exel(Workbook wb, WorksheetCollection collection, Style style, string name, int col)
-        {
-           
-
-            for (int worksheetIndex = 0; worksheetIndex < collection.Count; worksheetIndex++)
+            catch (Exception e)
             {
-            
-                // Получить рабочий лист, используя его индекс
-                Worksheet worksheet = collection[worksheetIndex];
-
-                // Печать имени рабочего листа
-                Console.WriteLine("Совпадение... " + name);
-               
-                // Получить количество строк и столбцов
-                int rows = worksheet.Cells.MaxDataRow;
-                for (int i = 0; i < rows; i++)
-                {
-                    // Console.WriteLine(worksheet.Cells[i, col].Value.ToString());
-                        //Console.WriteLine(worksheet.Cells[i, col].Value.ToString());
-                        if (name == worksheet.Cells[i, col].Value.ToString())
-                        {
-                            Cell cell = wb.Worksheets[worksheetIndex].Cells[i, col];
-
-                            style = cell.GetStyle();
-                            style.Font.Color = Color.Blue;
-                            cell.SetStyle(style);
-                            //Console.WriteLine("синий");
-                            break;
-
-                        }
-                 
-                   
-                }
-
+                Console.WriteLine("Panic !!!!!");
             }
 
-      
+
         }
     }
 
